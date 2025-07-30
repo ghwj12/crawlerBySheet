@@ -4,7 +4,7 @@ const { google } = require("googleapis");
 const path = require("path");
 const puppeteer = require("puppeteer");
 
-const keyFile = path.join(__dirname, "package-google-key.json");
+const keyFile = process.env.GOOGLE_KEY_FILE || path.join(__dirname, "package-google-key.json");
 const scopes = ["https://www.googleapis.com/auth/spreadsheets"];
 
 const app = express();
