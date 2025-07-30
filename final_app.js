@@ -128,7 +128,7 @@ async function sendDataToSheet(
   const writeRange = `${sheetName}!I6:I${6 + ranks.length}`;
   const date = new Date();
   const rankRowName = date
-    .toLocaleString("sv-SE", { hour12: false })
+    .toLocaleString("sv-SE", { hour12: false, timeZone: "Asia/Seoul" })
     .slice(2, 16)
     .replace("T", " ");
   const values = [[rankRowName], ...ranks];
