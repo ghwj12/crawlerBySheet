@@ -4,7 +4,9 @@ const { google } = require("googleapis");
 const path = require("path");
 const puppeteer = require("puppeteer");
 
-const keyFile = process.env.GOOGLE_KEY_FILE || path.join(__dirname, "package-google-key.json");
+const keyFile =
+  JSON.parse(process.env.GOOGLE_KEY_JSON) ||
+  path.join(__dirname, "package-google-key.json");
 const scopes = ["https://www.googleapis.com/auth/spreadsheets"];
 
 const app = express();
@@ -186,7 +188,7 @@ async function sendDataToSheet(
   });
 }
 
-// POST 요청 받는 엔드포인트 
+// POST 요청 받는 엔드포인트
 app.post("/trigger", async (req, res) => {
   const { sheetId, sheetName, spreadsheetId } = req.body;
   if (!sheetId || !sheetName || !spreadsheetId) {
@@ -205,7 +207,10 @@ app.post("/trigger", async (req, res) => {
     // 시트 데이터 읽기
     const rows = await getRowsFromSheet(sheets, spreadsheetId, sheetName);
 
-    browser = await puppeteer.launch({ headless: true });
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    });
     page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
     await page.setUserAgent(
