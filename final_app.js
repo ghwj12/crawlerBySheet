@@ -4,9 +4,6 @@ const { google } = require("googleapis");
 const path = require("path");
 const puppeteer = require("puppeteer");
 
-const keyFile =
-  JSON.parse(process.env.GOOGLE_KEY_JSON) ||
-  path.join(__dirname, "package-google-key.json");
 const scopes = ["https://www.googleapis.com/auth/spreadsheets"];
 
 const app = express();
@@ -195,13 +192,23 @@ app.post("/trigger", async (req, res) => {
     return res.status(400).json({ error: "필수값 누락" });
   }
 
-  let browser, page;
+  let browser, page, auth;
   try {
     // 구글 인증
-    const auth = new google.auth.GoogleAuth({
-      keyFile: keyFile,
-      scopes: scopes,
-    });
+    if (process.env.GOOGLE_KEY_JSON) {
+      // 환경변수에 JSON이 있으면 credentials 옵션
+      const keyObject = JSON.parse(process.env.GOOGLE_KEY_JSON);
+      auth = new google.auth.GoogleAuth({
+        credentials: keyObject,
+        scopes: scopes,
+      });
+    } else {
+      // 파일로 쓸 때만 keyFile 옵션
+      auth = new google.auth.GoogleAuth({
+        keyFile: path.join(__dirname, "package-google-key.json"),
+        scopes: scopes,
+      });
+    }
     const sheets = google.sheets({ version: "v4", auth });
 
     // 시트 데이터 읽기
@@ -209,7 +216,7 @@ app.post("/trigger", async (req, res) => {
 
     browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
