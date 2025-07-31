@@ -11,9 +11,15 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 
 // 오늘의 집에서 순위 조회하는 함수
-async function getRankFromOhouse(keyword, mid, page) {
+async function getRankFromOhouse(keyword, mid, browser) {
+  const page = await browser.newPage();
+  let rank = "";
   try {
-    let rank = "";
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+    );
+    await page.goto("https://store.ohou.se/", { waitUntil: "networkidle2" });
 
     // keyword가 유효한 경우만 검색
     if (keyword !== undefined && keyword !== null && keyword !== "") {
@@ -83,6 +89,19 @@ async function getRankFromOhouse(keyword, mid, page) {
         }
         if (found) break;
 
+        // 순위 1500위까지 조회
+        const lastNewUrl = newUrls
+          .slice(-1)
+          .join(",")
+          .match(/affect_id=(\d+)/);
+
+        if (lastNewUrl && Number(lastNewUrl[1]) >= 1500) {
+          console.log(
+            `keyword: ${keyword}, mid: ${mid} 1500번째 상품까지 조회 결과 해당 상품 없음`
+          );
+          break;
+        }
+
         // 스크롤 아래로
         await page.evaluate(() => {
           window.scrollBy(0, window.innerHeight);
@@ -101,11 +120,12 @@ async function getRankFromOhouse(keyword, mid, page) {
         await page.click(clearBtnSelector);
       }
     }
-
-    return rank || "";
   } catch (e) {
-    return ""; // 오류시 빈 값
+    console.error(`getRankFromOhouse 에러:`, e);
+  } finally {
+    await page.close();
   }
+  return rank || "";
 }
 
 // 시트에 있는 데이터 가져오는 함수
@@ -136,7 +156,7 @@ async function sendDataToSheet(
   const colorCellRow = 5; // 6행(0부터 시작)
   const colorCellCol = 8; // I열(0부터 시작)
 
-  // 새 열 삽입 + 날짜 셀 색상 지정
+  // 새 열 삽입 + 서식 지정
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -168,6 +188,7 @@ async function sendDataToSheet(
                   green: 0.949,
                   blue: 0.8,
                 },
+                horizontalAlignment: "CENTER",
               },
             },
             fields: "userEnteredFormat.backgroundColor",
@@ -219,17 +240,10 @@ app.post("/trigger", async (req, res) => {
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
-    page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800 });
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
-    );
-    await page.goto("https://store.ohou.se/", { waitUntil: "networkidle2" });
-    console.log("오늘의 집-쇼핑 페이지 열림");
 
     let ranks = [];
     for (const [keyword, mid] of rows) {
-      const rank = await getRankFromOhouse(keyword, mid, page);
+      const rank = await getRankFromOhouse(keyword, mid, browser);
       ranks.push([rank]);
       console.log(`keyword: ${keyword}, mid: ${mid}, rank: ${rank}`);
     }

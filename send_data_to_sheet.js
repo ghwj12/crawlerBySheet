@@ -30,31 +30,28 @@ async function getSheetIdByName(sheets, sheetName) {
   return found.properties.sheetId;
 }
 
-// 오늘의 집-쇼핑 페이지 여는 함수
+// 브라우저 여는 함수
 async function pageOpen() {
   try {
     browser = await puppeteer.launch({ headless: false });
-    page = await browser.newPage();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
 
-    // headless: true일 때 모바일 뷰로 판단되어 오류나는 것을 방지하기 위해
-    // 데스크탑 환경처럼 설정
+// 오늘의 집에서 순위 조회하는 함수
+async function getRankFromOhouse(browser, keyword, mid) {
+  const page = await browser.newPage();
+  let rank = "";
+
+  try {
     await page.setViewport({ width: 1280, height: 800 });
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
     );
     await page.goto("https://store.ohou.se/", { waitUntil: "networkidle2" });
     console.log("오늘의 집-쇼핑 페이지 열림");
-    return true;
-  } catch (e) {
-    if (browser) await browser.close();
-    return false;
-  }
-}
-
-// 오늘의 집에서 순위 조회하는 함수
-async function getRankFromOhouse(keyword, mid) {
-  try {
-    let rank = "";
 
     // keyword가 빈 값인지 확인
     if (keyword !== undefined && keyword !== null && keyword !== "") {
@@ -129,31 +126,31 @@ async function getRankFromOhouse(keyword, mid) {
 
         if (found) break;
 
+        // 순위 1500위까지 조회
+        const lastNewUrl = newUrls
+          .slice(-1)
+          .join(",")
+          .match(/affect_id=(\d+)/);
+
+        if (lastNewUrl && Number(lastNewUrl[1]) >= 1500) {
+          console.log(
+            `keyword: ${keyword}, mid: ${mid} 1500번째 상품까지 조회 결과 해당 상품 없음`
+          );
+          break;
+        }
+
         // 스크롤 아래로
         await page.evaluate(() => {
           window.scrollBy(0, window.innerHeight);
         });
       }
-
-      // 스크롤 맨 위로
-      await page.evaluate(() => {
-        window.scrollTo(0, 0);
-      });
-
-      // 검색어 초기화
-      const clearBtnSelector = "button.css-ytyqhb.e1rynmtb1";
-
-      // 버튼 존재 여부 확인
-      const isBtnVisible = await page.$(clearBtnSelector);
-      if (isBtnVisible) {
-        await page.click(clearBtnSelector);
-      }
     }
-
-    return rank || "";
   } catch (e) {
-    return ""; // 오류시 빈 값
+    console.error("getRankFromOhouse 에러:", e);
+  } finally {
+    await page.close();
   }
+  return rank || "";
 }
 
 // 구글 시트에 순위 데이터 업데이트 하는 함수
@@ -186,7 +183,7 @@ async function sendDataToSheet(sheets, ranks) {
             inheritFromBefore: false,
           },
         },
-        // 날짜 셀 색상 채우기
+        // 서식 지정
         {
           repeatCell: {
             range: {
@@ -203,6 +200,7 @@ async function sendDataToSheet(sheets, ranks) {
                   green: 0.949,
                   blue: 0.8,
                 },
+                horizontalAlignment: "CENTER",
               },
             },
             fields: "userEnteredFormat.backgroundColor",
@@ -221,6 +219,10 @@ async function sendDataToSheet(sheets, ranks) {
   });
 }
 
+function sleep(ms = 0) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // 시작
 (async () => {
   // 구글 인증
@@ -237,9 +239,8 @@ async function sendDataToSheet(sheets, ranks) {
   //오늘의 집 페이지 키워드 검색 준비
   const pageYn = await pageOpen();
   if (pageYn) {
-    // 각각의 순위 조회
     for (const [keyword, mid] of rows) {
-      const rank = await getRankFromOhouse(keyword, mid);
+      const rank = await getRankFromOhouse(browser, keyword, mid);
       ranks.push([rank]);
       console.log(`keyword: ${keyword}, mid: ${mid}, rank: ${rank}`);
     }
