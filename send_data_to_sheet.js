@@ -143,6 +143,8 @@ async function getRankFromOhouse(browser, keyword, mid) {
         await page.evaluate(() => {
           window.scrollBy(0, window.innerHeight);
         });
+
+        await sleep(500);
       }
     }
   } catch (e) {

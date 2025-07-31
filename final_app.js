@@ -106,19 +106,10 @@ async function getRankFromOhouse(keyword, mid, browser) {
         await page.evaluate(() => {
           window.scrollBy(0, window.innerHeight);
         });
+        
+        await sleep(500);
       }
 
-      // 스크롤 맨 위로
-      await page.evaluate(() => {
-        window.scrollTo(0, 0);
-      });
-
-      // 검색어 초기화(검색창 클리어)
-      const clearBtnSelector = "button.css-ytyqhb.e1rynmtb1";
-      const isBtnVisible = await page.$(clearBtnSelector);
-      if (isBtnVisible) {
-        await page.click(clearBtnSelector);
-      }
     }
   } catch (e) {
     console.error(`getRankFromOhouse 에러:`, e);
@@ -205,6 +196,10 @@ async function sendDataToSheet(
     valueInputOption: "RAW",
     requestBody: { values },
   });
+}
+
+function sleep(ms = 0) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // POST 요청 받는 엔드포인트
