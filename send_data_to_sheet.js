@@ -33,7 +33,7 @@ async function getSheetIdByName(sheets, sheetName) {
 // 오늘의 집-쇼핑 페이지 여는 함수
 async function pageOpen() {
   try {
-    browser = await puppeteer.launch({ headless: true });
+    browser = await puppeteer.launch({ headless: false });
     page = await browser.newPage();
 
     // headless: true일 때 모바일 뷰로 판단되어 오류나는 것을 방지하기 위해
@@ -66,7 +66,7 @@ async function getRankFromOhouse(keyword, mid) {
 
       console.log("키워드 검색 됨");
 
-      const totalUrls = [];
+      const totalUrls = new Set();
       let found = false;
 
       let repeatCount = 0;
@@ -114,17 +114,12 @@ async function getRankFromOhouse(keyword, mid) {
 
         // 중복 제거하며 순서대로 저장
         for (const url of newUrls) {
-          if (!totalUrls.includes(url)) {
-            totalUrls.push(url);
-            // console.log(`url ${url}`);
-          }
+          totalUrls.add(url);
         }
 
         // 순위 계산
-        for (let i = 0; i < totalUrls.length; i++) {
-          const match = totalUrls[i].match(
-            /productions\/(\d+).*affect_id=(\d+)/
-          );
+        for (let url of totalUrls) {
+          const match = url.match(/productions\/(\d+).*affect_id=(\d+)/);
           if (match && match[1] === mid) {
             rank = match[2];
             found = true;
@@ -139,6 +134,11 @@ async function getRankFromOhouse(keyword, mid) {
           window.scrollBy(0, window.innerHeight);
         });
       }
+
+      // 스크롤 맨 위로
+      await page.evaluate(() => {
+        window.scrollTo(0, 0);
+      });
 
       // 검색어 초기화
       const clearBtnSelector = "button.css-ytyqhb.e1rynmtb1";

@@ -24,7 +24,7 @@ async function getRankFromOhouse(keyword, mid, page) {
       await page.keyboard.press("Enter");
       console.log("키워드 검색 됨");
 
-      const totalUrls = [];
+      const totalUrls = new Set();
       let found = false;
       let repeatCount = 0;
       const MAX_REPEAT = 100;
@@ -67,18 +67,14 @@ async function getRankFromOhouse(keyword, mid, page) {
           break;
         }
 
-        // 중복 제거하며 순서대로 저장
+        // 중복없이 순서대로 저장
         for (const url of newUrls) {
-          if (!totalUrls.includes(url)) {
-            totalUrls.push(url);
-          }
+          totalUrls.add(url);
         }
 
         // 순위 계산
-        for (let i = 0; i < totalUrls.length; i++) {
-          const match = totalUrls[i].match(
-            /productions\/(\d+).*affect_id=(\d+)/
-          );
+        for (let url of totalUrls) {
+          const match = url.match(/productions\/(\d+).*affect_id=(\d+)/);
           if (match && match[1] === mid) {
             rank = match[2];
             found = true;
@@ -92,6 +88,11 @@ async function getRankFromOhouse(keyword, mid, page) {
           window.scrollBy(0, window.innerHeight);
         });
       }
+
+      // 스크롤 맨 위로
+      await page.evaluate(() => {
+        window.scrollTo(0, 0);
+      });
 
       // 검색어 초기화(검색창 클리어)
       const clearBtnSelector = "button.css-ytyqhb.e1rynmtb1";
