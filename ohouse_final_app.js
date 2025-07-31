@@ -106,7 +106,7 @@ async function getRankFromOhouse(keyword, mid, browser) {
         await page.evaluate(() => {
           window.scrollBy(0, window.innerHeight);
         });
-        
+
         await sleep(500);
       }
 
@@ -179,7 +179,7 @@ async function sendDataToSheet(
                   green: 0.949,
                   blue: 0.8,
                 },
-                horizontalAlignment: "CENTER",
+                horizontalAlignment: "center",
               },
             },
             fields: "userEnteredFormat.backgroundColor",
@@ -203,7 +203,7 @@ function sleep(ms = 0) {
 }
 
 // POST 요청 받는 엔드포인트
-app.post("/trigger", async (req, res) => {
+app.post("/ohouse_trigger", async (req, res) => {
   const { sheetId, sheetName, spreadsheetId } = req.body;
   if (!sheetId || !sheetName || !spreadsheetId) {
     return res.status(400).json({ error: "필수값 누락" });
